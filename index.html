@@ -2,23 +2,30 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Live Kleinanzeigen Scraper</title>
+    <title>Intelligenter Kleinanzeigen Scraper</title>
     <style>
         body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 20px; }
         .aditem { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
         .aditem h3 { margin-top: 0; }
         .schnaeppchen { border: 2px solid #e53935; background-color: #ffebee; }
         .schnaeppchen::before { content: "🚨 SCHNÄPPCHEN-ALARM! "; color: #e53935; font-weight: bold; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        #suchfeld { flex-grow: 1; padding: 10px; }
+        #suchButton { padding: 10px 20px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <h1>Live Kleinanzeigen Scraper</h1>
-    <p>Dieses Skript holt die neuesten Anzeigen für "Goldring 585" in Sachsen.</p>
-    <button id="startButton">Starte den Scan!</button>
+    <h1>Intelligenter Kleinanzeigen Scraper</h1>
+    
+    <div class="input-group">
+        <input type="text" id="suchfeld" placeholder="Suche nach 'Gold', 'Fahrrad', 'Handy'...">
+        <button id="suchButton">Scan starten!</button>
+    </div>
+
     <hr>
     <h2>Ergebnisse:</h2>
-    <div id="ergebnisContainer">Lade Daten...</div>
+    <div id="ergebnisContainer">Gib einen Suchbegriff ein und starte den Scan.</div>
 
     <script src="script.js"></script>
 </body>
