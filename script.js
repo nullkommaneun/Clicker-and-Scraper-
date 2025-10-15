@@ -1,26 +1,21 @@
 // --- Elemente und Konfiguration ---
 const suchButton = document.getElementById('suchButton');
-const suchfeld = document.getElementById('suchfeld'); // NEU
+const suchfeld = document.getElementById('suchfeld');
 const ergebnisContainer = document.getElementById('ergebnisContainer');
 
-// NEU: Unser "Spickzettel" für die Kategorie-Auswahl
 const KATEGORIE_MAP = {
-    'gold': 'c23-l3825',        // Kategorie: Schmuck & Accessoires in Sachsen
-    'schmuck': 'c23-l3825',     // Alias für Schmuck
-    'fahrrad': 'c217-l3825',    // Kategorie: Fahrräder in Sachsen
-    'handy': 'c173-l3825'       // Kategorie: Handy & Telefon in Sachsen
+    'gold': 'c23-l3825',
+    'schmuck': 'c23-l3825',
+    'fahrrad': 'c217-l3825',
+    'handy': 'c173-l3825'
 };
 
-// NEU: Unsere "Blacklist" für irrelevante Begriffe
 const NEGATIVE_KEYWORDS = {
     'gold': ['porzellan', 'rand', 'dekor', 'geschirr', 'teller', 'tasse', 'goldrand']
-    // Hier könnten wir Listen für andere Begriffe hinzufügen
 };
 
-// Unsere Schnäppchen-Regeln
 const SCHNAEPPCHEN_KEYWORDS = ["dringend", "notverkauf", "schnell", "nachlass", "auflösung"];
 
-// --- Die Hauptfunktion ---
 async function starteScan() {
     const suchBegriff = suchfeld.value.trim().toLowerCase();
     if (!suchBegriff) {
@@ -29,14 +24,12 @@ async function starteScan() {
     }
     ergebnisContainer.innerHTML = `Scanne Kleinanzeigen nach "${suchBegriff}", bitte warten...`;
 
-    // NEU: Dynamische URL bauen
     let kleinanzeigenURL;
     const kategorie = KATEGORIE_MAP[suchBegriff];
     if (kategorie) {
-        // Wenn wir eine Kategorie kennen, suchen wir direkt dort
+        // Wir suchen in der spezifischen Kategorie NACH dem Suchbegriff
         kleinanzeigenURL = `https://www.kleinanzeigen.de/s-anzeige:angebote/${kategorie}/anzeige:${suchBegriff}`;
     } else {
-        // Ansonsten eine allgemeine Suche
         kleinanzeigenURL = `https://www.kleinanzeigen.de/s-sachsen/${suchBegriff}/k0l3825`;
     }
     
@@ -58,17 +51,21 @@ async function starteScan() {
             const preis = angebot.querySelector('.aditem-main--middle--price-shipping--price')?.textContent.trim() || "Kein Preis";
             const ganzerText = (titel + beschreibung).toLowerCase();
 
-            // NEU: Filter für negative Keywords anwenden
+            // ✅ KORREKTUR: Der entscheidende Filter!
+            // Wir prüfen jetzt, ob der Suchbegriff überhaupt im Text vorkommt.
+            if (!ganzerText.includes(suchBegriff)) {
+                return; // Wenn nicht, überspringe diese Anzeige komplett.
+            }
+
             const negativeFilter = NEGATIVE_KEYWORDS[suchBegriff] || [];
             const enthaeltNegativesWort = negativeFilter.some(keyword => ganzerText.includes(keyword));
             
             if (enthaeltNegativesWort) {
-                return; // Diese Anzeige überspringen
+                return;
             }
             
             gefundeneAnzeigen++;
 
-            // Schnäppchen-Logik
             let istSchnaeppchen = false;
             for (const keyword of SCHNAEPPCHEN_KEYWORDS) {
                 if (ganzerText.includes(keyword)) {
@@ -96,5 +93,5 @@ async function starteScan() {
     }
 }
 
-// --- Verbinde die Funktion mit dem Button ---
 suchButton.addEventListener('click', starteScan);
+ 
