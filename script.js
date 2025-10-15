@@ -2,8 +2,8 @@
 const startButton = document.getElementById('startButton');
 const ergebnisContainer = document.getElementById('ergebnisContainer');
 
-// Die URL, die wir scrapen wollen
-const kleinanzeigenURL = "https://www.kleinanzeigen.de/s-sachsen/goldring-585/k0l3825";
+// Die URL, die wir scrapen wollen (wir nehmen eine etwas breitere Suche zum Testen)
+const kleinanzeigenURL = "https://www.kleinanzeigen.de/s-sachsen/gold/k0l3825";
 
 // Unser "Bote", der CORS-Proxy
 const proxyURL = `https://api.allorigins.win/raw?url=${encodeURIComponent(kleinanzeigenURL)}`;
@@ -24,22 +24,28 @@ async function starteScan() {
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlText, 'text/html');
 
-        // 3. Alle Anzeigen finden (Kleinanzeigen nutzt <article class="aditem">)
+        // 3. Alle Anzeigen finden
         const angebote = doc.querySelectorAll('article.aditem');
         
         ergebnisContainer.innerHTML = ""; // Alte Ergebnisse löschen
 
         if (angebote.length === 0) {
-            ergebnisContainer.innerHTML = "Konnte keine Anzeigen finden. Möglicherweise blockiert.";
+            ergebnisContainer.innerHTML = "Konnte keine Anzeigen finden. Möglicherweise blockiert oder die Seite hat sich geändert.";
             return;
         }
 
         // 4. Jedes Angebot analysieren und anzeigen
         angebote.forEach(angebot => {
-            const titel = angebot.querySelector('h2 a').textContent.trim();
-            const preis = angebot.querySelector('.aditem-main--middle--price-shipping--price').textContent.trim();
-            const beschreibung = angebot.querySelector('.aditem-main--middle--description').textContent.trim();
+            // ✅ KORREKTUR: Wir prüfen jetzt, ob die Elemente existieren, bevor wir zugreifen.
+            // Das ?. nennt man "Optional Chaining". Es verhindert den Absturz.
+            const titel = angebot.querySelector('h2 a')?.textContent.trim() || "Kein Titel gefunden";
             
+            // ✅ KORREKTUR: Der Klassenname für den Preis wurde aktualisiert.
+            const preis = angebot.querySelector('.aditem-main--middle--price-shipping--price')?.textContent.trim() || "Kein Preis gefunden";
+            
+            // ✅ KORREKTUR: Der Klassenname für die Beschreibung wurde aktualisiert.
+            const beschreibung = angebot.querySelector('.aditem-main--middle--description')?.textContent.trim() || "";
+
             // Überprüfe, ob es ein Schnäppchen ist
             let istSchnaeppchen = false;
             const ganzerText = (titel + beschreibung).toLowerCase();
@@ -69,3 +75,4 @@ async function starteScan() {
 
 // --- Verbinde die Funktion mit dem Button ---
 startButton.addEventListener('click', starteScan);
+ 
