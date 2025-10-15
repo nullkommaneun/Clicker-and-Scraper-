@@ -2,30 +2,46 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Intelligenter Kleinanzeigen Scraper</title>
+    <title>Konfigurierbarer Kleinanzeigen Agent</title>
     <style>
-        body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 20px; }
+        body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 20px; background-color: #f4f4f4; }
+        .container { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { text-align: center; }
+        .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .config-item { display: flex; flex-direction: column; }
+        label { margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="number"] { padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
         .aditem { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
         .aditem h3 { margin-top: 0; }
-        .schnaeppchen { border: 2px solid #e53935; background-color: #ffebee; }
-        .schnaeppchen::before { content: "🚨 SCHNÄPPCHEN-ALARM! "; color: #e53935; font-weight: bold; }
-        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
-        #suchfeld { flex-grow: 1; padding: 10px; }
-        #suchButton { padding: 10px 20px; cursor: pointer; }
+        #ergebnisContainer { margin-top: 20px; }
     </style>
 </head>
 <body>
 
-    <h1>Intelligenter Kleinanzeigen Scraper</h1>
-    
-    <div class="input-group">
-        <input type="text" id="suchfeld" placeholder="Suche nach 'Gold', 'Fahrrad', 'Handy'...">
-        <button id="suchButton">Scan starten!</button>
-    </div>
+    <div class="container">
+        <h1>Konfigurierbarer Kleinanzeigen Agent</h1>
 
-    <hr>
-    <h2>Ergebnisse:</h2>
-    <div id="ergebnisContainer">Gib einen Suchbegriff ein und starte den Scan.</div>
+        <div class="config-grid">
+            <div class="config-item">
+                <label for="suchfeld">Suchbegriff:</label>
+                <input type="text" id="suchfeld" placeholder="z.B. Goldring">
+            </div>
+            <div class="config-item">
+                <label for="radius">Umkreis (km):</label>
+                <input type="number" id="radius" value="50" placeholder="z.B. 50">
+            </div>
+        </div>
+        <div class="config-item" style="margin-bottom: 20px;">
+            <label for="blacklist">Blacklist (Wörter mit Komma trennen):</label>
+            <input type="text" id="blacklist" placeholder="z.B. porzellan, goldrand, dekor">
+        </div>
+
+        <button id="suchButton">Scan starten!</button>
+        
+        <div id="ergebnisContainer"></div>
+    </div>
 
     <script src="script.js"></script>
 </body>
