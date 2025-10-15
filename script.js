@@ -1,37 +1,27 @@
-// --- Elemente und Konfiguration ---
+// --- Elemente holen ---
 const suchButton = document.getElementById('suchButton');
 const suchfeld = document.getElementById('suchfeld');
+const radiusInput = document.getElementById('radius');
+const blacklistInput = document.getElementById('blacklist');
 const ergebnisContainer = document.getElementById('ergebnisContainer');
 
-const KATEGORIE_MAP = {
-    'gold': 'c23-l3825',
-    'schmuck': 'c23-l3825',
-    'fahrrad': 'c217-l3825',
-    'handy': 'c173-l3825'
-};
-
-const NEGATIVE_KEYWORDS = {
-    'gold': ['porzellan', 'rand', 'dekor', 'geschirr', 'teller', 'tasse', 'goldrand']
-};
-
-const SCHNAEPPCHEN_KEYWORDS = ["dringend", "notverkauf", "schnell", "nachlass", "auflösung"];
-
 async function starteScan() {
-    const suchBegriff = suchfeld.value.trim().toLowerCase();
+    // 1. Alle Konfigurationen von der Seite einlesen
+    const suchBegriff = suchfeld.value.trim();
+    const radius = radiusInput.value.trim();
+    const blacklist = blacklistInput.value.trim().toLowerCase().split(',').map(item => item.trim());
+
     if (!suchBegriff) {
         alert("Bitte gib einen Suchbegriff ein.");
         return;
     }
-    ergebnisContainer.innerHTML = `Scanne Kleinanzeigen nach "${suchBegriff}", bitte warten...`;
+    ergebnisContainer.innerHTML = "Scanne Kleinanzeigen, bitte warten...";
 
-    let kleinanzeigenURL;
-    const kategorie = KATEGORIE_MAP[suchBegriff];
-    if (kategorie) {
-        // Wir suchen in der spezifischen Kategorie NACH dem Suchbegriff
-        kleinanzeigenURL = `https://www.kleinanzeigen.de/s-anzeige:angebote/${kategorie}/anzeige:${suchBegriff}`;
-    } else {
-        kleinanzeigenURL = `https://www.kleinanzeigen.de/s-sachsen/${suchBegriff}/k0l3825`;
-    }
+    // 2. Die Such-URL dynamisch und korrekt zusammenbauen
+    // Beispiel: /s-sachsen/zwickau/goldring/k0l3825r50
+    // l3825 ist der Code für Sachsen, den behalten wir mal als Basis
+    // r+radius ist der Code für den Umkreis
+    const kleinanzeigenURL = `https://www.kleinanzeigen.de/s-sachsen/${suchBegriff}/k0l3825r${radius}`;
     
     const proxyURL = `https://api.allorigins.win/raw?url=${encodeURIComponent(kleinanzeigenURL)}`;
 
@@ -51,31 +41,25 @@ async function starteScan() {
             const preis = angebot.querySelector('.aditem-main--middle--price-shipping--price')?.textContent.trim() || "Kein Preis";
             const ganzerText = (titel + beschreibung).toLowerCase();
 
-            // ✅ KORREKTUR: Der entscheidende Filter!
-            // Wir prüfen jetzt, ob der Suchbegriff überhaupt im Text vorkommt.
-            if (!ganzerText.includes(suchBegriff)) {
-                return; // Wenn nicht, überspringe diese Anzeige komplett.
+            // 3. Den Suchbegriff und die Blacklist anwenden
+            const suchbegriffEnthalten = suchBegriff.toLowerCase().split(' ').every(wort => ganzerText.includes(wort));
+            
+            if (!suchbegriffEnthalten) {
+                return; // Überspringen, wenn nicht alle Wörter des Suchbegriffs vorkommen
             }
 
-            const negativeFilter = NEGATIVE_KEYWORDS[suchBegriff] || [];
-            const enthaeltNegativesWort = negativeFilter.some(keyword => ganzerText.includes(keyword));
+            const enthaeltNegativesWort = blacklist.some(keyword => keyword && ganzerText.includes(keyword));
             
             if (enthaeltNegativesWort) {
-                return;
+                return; // Überspringen, wenn ein Blacklist-Wort gefunden wird
             }
             
             gefundeneAnzeigen++;
 
-            let istSchnaeppchen = false;
-            for (const keyword of SCHNAEPPCHEN_KEYWORDS) {
-                if (ganzerText.includes(keyword)) {
-                    istSchnaeppchen = true;
-                    break;
-                }
-            }
+            // (Die Schnäppchen-Logik lassen wir der Einfachheit halber mal weg, kann aber wieder rein)
 
             const anzeigeHTML = `
-                <div class="aditem ${istSchnaeppchen ? 'schnaeppchen' : ''}">
+                <div class="aditem">
                     <h3>${titel}</h3>
                     <p><strong>Preis:</strong> ${preis}</p>
                     <p>${beschreibung}</p>
