@@ -9,7 +9,7 @@ async function starteScan() {
     // 1. Alle Konfigurationen von der Seite einlesen
     const suchBegriff = suchfeld.value.trim();
     const radius = radiusInput.value.trim();
-    const blacklist = blacklistInput.value.trim().toLowerCase().split(',').map(item => item.trim());
+    const blacklist = blacklistInput.value.trim().toLowerCase().split(',').map(item => item.trim()).filter(item => item); // Filtert leere Einträge raus
 
     if (!suchBegriff) {
         alert("Bitte gib einen Suchbegriff ein.");
@@ -18,15 +18,17 @@ async function starteScan() {
     ergebnisContainer.innerHTML = "Scanne Kleinanzeigen, bitte warten...";
 
     // 2. Die Such-URL dynamisch und korrekt zusammenbauen
-    // Beispiel: /s-sachsen/zwickau/goldring/k0l3825r50
-    // l3825 ist der Code für Sachsen, den behalten wir mal als Basis
-    // r+radius ist der Code für den Umkreis
-    const kleinanzeigenURL = `https://www.kleinanzeigen.de/s-sachsen/${suchBegriff}/k0l3825r${radius}`;
+    // l3825 ist der Code für Sachsen, r+radius ist der Code für den Umkreis
+    const kleinanzeigenURL = `https://www.kleinanzeigen.de/s-sachsen/${encodeURIComponent(suchBegriff)}/k0l3825r${encodeURIComponent(radius)}`;
     
+    // Wir nutzen einen CORS-Proxy, um die Sicherheitsbeschränkungen des Browsers zu umgehen
     const proxyURL = `https://api.allorigins.win/raw?url=${encodeURIComponent(kleinanzeigenURL)}`;
 
     try {
         const response = await fetch(proxyURL);
+        if (!response.ok) {
+            throw new Error(`Netzwerk-Antwort war nicht ok: ${response.statusText}`);
+        }
         const htmlText = await response.text();
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlText, 'text/html');
@@ -36,7 +38,13 @@ async function starteScan() {
         let gefundeneAnzeigen = 0;
 
         angebote.forEach(angebot => {
-            const titel = angebot.querySelector('h2 a')?.textContent.trim() || "";
+            const titelElement = angebot.querySelector('h2 a');
+            const titel = titelElement?.textContent.trim() || "Kein Titel";
+            
+            // Link aus dem 'href'-Attribut holen und zu einer vollen URL machen
+            const link = titelElement?.getAttribute('href') || '#';
+            const vollstaendigerLink = `https://www.kleinanzeigen.de${link}`;
+
             const beschreibung = angebot.querySelector('.aditem-main--middle--description')?.textContent.trim() || "";
             const preis = angebot.querySelector('.aditem-main--middle--price-shipping--price')?.textContent.trim() || "Kein Preis";
             const ganzerText = (titel + beschreibung).toLowerCase();
@@ -56,11 +64,10 @@ async function starteScan() {
             
             gefundeneAnzeigen++;
 
-            // (Die Schnäppchen-Logik lassen wir der Einfachheit halber mal weg, kann aber wieder rein)
-
+            // Das HTML für die Anzeige erstellen
             const anzeigeHTML = `
                 <div class="aditem">
-                    <h3>${titel}</h3>
+                    <h3><a href="${vollstaendigerLink}" target="_blank" rel="noopener noreferrer">${titel}</a></h3>
                     <p><strong>Preis:</strong> ${preis}</p>
                     <p>${beschreibung}</p>
                 </div>
@@ -73,9 +80,10 @@ async function starteScan() {
         }
 
     } catch (error) {
-        ergebnisContainer.innerHTML = `Ein Fehler ist aufgetreten: ${error}.`;
+        ergebnisContainer.innerHTML = `Ein Fehler ist aufgetreten: ${error}. Möglicherweise blockiert der CORS-Proxy die Anfrage. Versuche es später erneut.`;
+        console.error("Fehler beim Scrapen:", error);
     }
 }
 
+// Die Funktion mit dem Button verbinden
 suchButton.addEventListener('click', starteScan);
- 
