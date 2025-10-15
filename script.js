@@ -1,54 +1,75 @@
 // --- Elemente und Konfiguration ---
-const startButton = document.getElementById('startButton');
+const suchButton = document.getElementById('suchButton');
+const suchfeld = document.getElementById('suchfeld'); // NEU
 const ergebnisContainer = document.getElementById('ergebnisContainer');
 
-// Die URL, die wir scrapen wollen (wir nehmen eine etwas breitere Suche zum Testen)
-const kleinanzeigenURL = "https://www.kleinanzeigen.de/s-sachsen/gold/k0l3825";
+// NEU: Unser "Spickzettel" für die Kategorie-Auswahl
+const KATEGORIE_MAP = {
+    'gold': 'c23-l3825',        // Kategorie: Schmuck & Accessoires in Sachsen
+    'schmuck': 'c23-l3825',     // Alias für Schmuck
+    'fahrrad': 'c217-l3825',    // Kategorie: Fahrräder in Sachsen
+    'handy': 'c173-l3825'       // Kategorie: Handy & Telefon in Sachsen
+};
 
-// Unser "Bote", der CORS-Proxy
-const proxyURL = `https://api.allorigins.win/raw?url=${encodeURIComponent(kleinanzeigenURL)}`;
+// NEU: Unsere "Blacklist" für irrelevante Begriffe
+const NEGATIVE_KEYWORDS = {
+    'gold': ['porzellan', 'rand', 'dekor', 'geschirr', 'teller', 'tasse', 'goldrand']
+    // Hier könnten wir Listen für andere Begriffe hinzufügen
+};
 
 // Unsere Schnäppchen-Regeln
 const SCHNAEPPCHEN_KEYWORDS = ["dringend", "notverkauf", "schnell", "nachlass", "auflösung"];
 
 // --- Die Hauptfunktion ---
 async function starteScan() {
-    ergebnisContainer.innerHTML = "Scanne Kleinanzeigen, bitte warten...";
+    const suchBegriff = suchfeld.value.trim().toLowerCase();
+    if (!suchBegriff) {
+        alert("Bitte gib einen Suchbegriff ein.");
+        return;
+    }
+    ergebnisContainer.innerHTML = `Scanne Kleinanzeigen nach "${suchBegriff}", bitte warten...`;
+
+    // NEU: Dynamische URL bauen
+    let kleinanzeigenURL;
+    const kategorie = KATEGORIE_MAP[suchBegriff];
+    if (kategorie) {
+        // Wenn wir eine Kategorie kennen, suchen wir direkt dort
+        kleinanzeigenURL = `https://www.kleinanzeigen.de/s-anzeige:angebote/${kategorie}/anzeige:${suchBegriff}`;
+    } else {
+        // Ansonsten eine allgemeine Suche
+        kleinanzeigenURL = `https://www.kleinanzeigen.de/s-sachsen/${suchBegriff}/k0l3825`;
+    }
+    
+    const proxyURL = `https://api.allorigins.win/raw?url=${encodeURIComponent(kleinanzeigenURL)}`;
 
     try {
-        // 1. Daten über den Proxy holen
         const response = await fetch(proxyURL);
         const htmlText = await response.text();
-
-        // 2. Den HTML-Text in ein durchsuchbares Dokument umwandeln
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlText, 'text/html');
-
-        // 3. Alle Anzeigen finden
         const angebote = doc.querySelectorAll('article.aditem');
         
-        ergebnisContainer.innerHTML = ""; // Alte Ergebnisse löschen
+        ergebnisContainer.innerHTML = "";
+        let gefundeneAnzeigen = 0;
 
-        if (angebote.length === 0) {
-            ergebnisContainer.innerHTML = "Konnte keine Anzeigen finden. Möglicherweise blockiert oder die Seite hat sich geändert.";
-            return;
-        }
-
-        // 4. Jedes Angebot analysieren und anzeigen
         angebote.forEach(angebot => {
-            // ✅ KORREKTUR: Wir prüfen jetzt, ob die Elemente existieren, bevor wir zugreifen.
-            // Das ?. nennt man "Optional Chaining". Es verhindert den Absturz.
-            const titel = angebot.querySelector('h2 a')?.textContent.trim() || "Kein Titel gefunden";
-            
-            // ✅ KORREKTUR: Der Klassenname für den Preis wurde aktualisiert.
-            const preis = angebot.querySelector('.aditem-main--middle--price-shipping--price')?.textContent.trim() || "Kein Preis gefunden";
-            
-            // ✅ KORREKTUR: Der Klassenname für die Beschreibung wurde aktualisiert.
+            const titel = angebot.querySelector('h2 a')?.textContent.trim() || "";
             const beschreibung = angebot.querySelector('.aditem-main--middle--description')?.textContent.trim() || "";
-
-            // Überprüfe, ob es ein Schnäppchen ist
-            let istSchnaeppchen = false;
+            const preis = angebot.querySelector('.aditem-main--middle--price-shipping--price')?.textContent.trim() || "Kein Preis";
             const ganzerText = (titel + beschreibung).toLowerCase();
+
+            // NEU: Filter für negative Keywords anwenden
+            const negativeFilter = NEGATIVE_KEYWORDS[suchBegriff] || [];
+            const enthaeltNegativesWort = negativeFilter.some(keyword => ganzerText.includes(keyword));
+            
+            if (enthaeltNegativesWort) {
+                return; // Diese Anzeige überspringen
+            }
+            
+            gefundeneAnzeigen++;
+
+            // Schnäppchen-Logik
+            let istSchnaeppchen = false;
             for (const keyword of SCHNAEPPCHEN_KEYWORDS) {
                 if (ganzerText.includes(keyword)) {
                     istSchnaeppchen = true;
@@ -56,7 +77,6 @@ async function starteScan() {
                 }
             }
 
-            // Erstelle das HTML für die Anzeige
             const anzeigeHTML = `
                 <div class="aditem ${istSchnaeppchen ? 'schnaeppchen' : ''}">
                     <h3>${titel}</h3>
@@ -67,12 +87,14 @@ async function starteScan() {
             ergebnisContainer.innerHTML += anzeigeHTML;
         });
 
+        if(gefundeneAnzeigen === 0){
+             ergebnisContainer.innerHTML = "Keine passenden Anzeigen gefunden (oder alle wurden herausgefiltert).";
+        }
+
     } catch (error) {
-        ergebnisContainer.innerHTML = `Ein Fehler ist aufgetreten: ${error}. Versuche es später erneut.`;
-        console.error("Fehler beim Scrapen:", error);
+        ergebnisContainer.innerHTML = `Ein Fehler ist aufgetreten: ${error}.`;
     }
 }
 
 // --- Verbinde die Funktion mit dem Button ---
-startButton.addEventListener('click', starteScan);
- 
+suchButton.addEventListener('click', starteScan);
